@@ -1,0 +1,31 @@
+[package]
+name = "crusty"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+panic-halt = "0.2.0"
+windows-sys = {version="0.59.0", features = [
+    "Win32_System_Threading",
+    "Win32_System_Kernel",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_SystemInformation",
+    "Win32_System_SystemServices",
+    "Win32_Security",
+    "Win32_Networking_WinSock",
+] }
+ 
+
+
+[dev-dependencies]
+panic-abort = "0.3.2"
+
+
+[profile.release]
+panic = "abort"
+opt-level = 'z'
+lto = true
+codegen-units = 1
+
+

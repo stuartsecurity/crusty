@@ -1,0 +1,91 @@
+[config]
+skip_core_tasks = true
+
+
+[env]
+TARGET = "x86_64-pc-windows-gnu"
+RUSTFLAGS = "-C link-arg=-Wl,--verbose -C codegen-units=1 -C link-arg=-fpack-struct=8 -C link-arg=-falign-jumps=1 -C link-arg=-w -C relocation-model=pic -C link-arg=-Wl,-T./scripts/windows-x86_64.x -C link-arg=-Wl,-s,--no-seh,--enable-stdcall-fixup -C link-arg=-Wl,--subsystem,console"
+
+[tasks.default]
+description = "Default task that builds the project."
+dependencies = ["build", "strip"]
+
+
+[tasks.build]
+description = "Build, strips, objcopy and cleans the project."
+dependencies = ["cargo-build", "objcopy"]
+
+[tasks.clean]
+description = "Cleans the project and removes implant"
+windows.script = [
+    "del implant.bin",
+    "del implant.map",
+]
+linux.script = [ 
+    "rm -f implant.bin",
+    "rm -f implant.map",
+]
+dependencies = ["cargo-clean"]
+
+
+[tasks.cargo-clean]
+command = "cargo"
+args = ["clean"]
+
+
+[tasks.cargo-build]
+command = "cargo"
+args = [
+    "build",
+    "--release",
+    "--target",
+    "${TARGET}",
+]
+env = { "RUSTFLAGS" = "${RUSTFLAGS}" }
+
+
+[tasks.clippy]
+command = "cargo"
+args = [
+    "clippy",
+    "--release",
+    "--target",
+    "${TARGET}",
+]
+env = { "RUSTFLAGS" = "${RUSTFLAGS}" }
+
+[tasks.strip]
+windows.command = "x86_64-w64-mingw32-strip"
+command = "strip"
+args = ["-s", "--strip-unneeded", "-x", "-X", "target/x86_64-pc-windows-gnu/release/crusty.exe"]
+
+
+
+
+[tasks.objcopy]
+windows.command = "x86_64-w64-mingw32-objcopy"
+command = "objcopy"
+dependencies = ["cargo-build"]
+args = [
+    "-O",
+    "binary",
+    "-j",
+    ".text",
+    "target/x86_64-pc-windows-gnu/release/crusty.exe",
+    "implant.bin",
+]
+
+[tasks.objdump]
+windows.command = "x86_64-w64-mingw32-objdump"
+command = "x86_64-w64-mingw32-objdump"
+dependencies = ["objcopy"]
+args = [
+    "-dzrW",
+    "-mi386",
+    "-Mx86-64",
+    "-Mintel",
+    "-j",
+    ".text",
+    "-z",
+    "target/x86_64-pc-windows-gnu/release/crusty.exe",
+]
