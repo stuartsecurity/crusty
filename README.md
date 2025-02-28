@@ -15,3 +15,7 @@ The resulting implant.bin file should be between 1200 and 1300 bytes.
 cargo make
 ```
 
+
+## Usage
+
+the `init` function accepts a pointer to byte array (4 bytes) and a 16 bit port number.

@@ -7,7 +7,6 @@ name = "crusty"
 version = "0.1.0"
 dependencies = [
  "panic-abort",
- "panic-halt",
  "windows-sys",
 ]
 
@@ -16,12 +15,6 @@ name = "panic-abort"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e20e6499bbbc412f280b04a42346b356c6fa0753d5fd22b7bd752ff34c778ee"
-
-[[package]]
-name = "panic-halt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
 
 [[package]]
 name = "windows-sys"
