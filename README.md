@@ -2,7 +2,7 @@
 
 Educational rust code for creating a position independant, implantable tcp connection. Also commonly known as reverse shell.
 
-The resulting implant.bin file should be between 1600 and 1700 bytes.
+The resulting implant.bin file should be between 1200 and 1300 bytes.
 
 ## Prerequisite
 
